@@ -1,55 +1,54 @@
 #!/usr/bin/env python
 from wiringpi2 import *
-from datetime import datetime
 from time import sleep
-wiringPiSetup() #use wiringPi pin scheme
+wiringPiSetupGpio() #use wiringPi pin scheme
 
-#assign values to 595's pins
-pinBase = 100
-RS =  pinBase + 0
-E =   RS + 1
-DB4 = E + 1
-DB5 = DB4 + 1
-DB6 = DB5 + 1
-DB7 = DB6 + 1
-cols = 16
-rows = 2
+class lcdshift:
+    def __init__(self,cols=16,rows=2,dataPin=13,clockPin=26,latchPin=19):
+        self.cols = cols
+        self.rows = rows
+        #assign values to 595's pins
+        #Pi's pin out using WiringPi's scheme
+        pinBase = 100
+        RS =  pinBase + 0
+        E =   RS + 1
+        DB4 = E + 1
+        DB5 = DB4 + 1
+        DB6 = DB5 + 1
+        DB7 = DB6 + 1
+        #          pin @ QA, num pins used, DS, SRCLK, RCLK 
+        sr595Setup(pinBase, 6, dataPin, clockPin, latchPin)
+        # Now, let's handle the HD44780 ...
+        # RS, E, DB4, DB5, DB6 and DB7's signals are coming out of the 595
+        self.lcd = lcdInit(rows, cols, 4, RS, E, DB4, DB5, DB6, DB7, 0,0,0,0)
+        lcdClear(self.lcd)
+        lcdCursorBlink(self.lcd,False)
+        
+    def scrollOneLine(self,text,countby=5,delay=0.15,flyin=False,repeat=False):
+        cols = self.cols
+        lcd = self.lcd
 
-#Pi's pin out using WiringPi's scheme
-dataPin, clockPin, latchPin = 23, 25, 24
+        if flyin:
+            # pad text with cols - 1 blank spaces, so
+            # text flies in from right
+            startpad = cols
+        else:
+            startpad = 0
+        # Remove newline characters to display only on one line
+        text_nonewline = text.rstrip('\n')
+        textpad = " "*startpad + text_nonewline + " " + text_nonewline[0:cols]
+        endPadLength = (len(textpad)-cols) % countby
+        textpad = textpad + " "*endPadLength
+        # loop through the text
+        for i in range(0, len(textpad)-cols+1,countby):
+            lcdPosition(lcd, 0, 0)        
+            lcdPuts(lcd,textpad[i:(i+(cols))])
+            print textpad[i:(i+(cols))]
+            sleep(delay*countby)
 
-#           pin @ QA, num pins used, SER    , SRCLK   , RCLK 
-sr595Setup (pinBase , 6            , dataPin, clockPin, latchPin)
-
-def scrolling_message(text):
-    # pad text with numlines.numcols - 1 blank spaces, so
-    # text flies in from right
-    # Do the same for trailing spaces.
-    text = " "*cols + text.rstrip('\n') + " "
-    
-    for i in range(0, len(text)):
-        lcdHome(lcd)
-        lcdPuts(lcd,text[i:(i+(cols))])
-        print text[i:(i+(cols))]
-        sleep(0.3)
-
-# Now, let's handle the HD44780 ...
-# RS, E, DB4, DB5, DB6 and DB7's signals are coming out of the 595
-lcd = lcdInit (rows, cols, 4, RS, E, DB4, DB5, DB6, DB7, 0,0,0,0)
-lcdCursorBlink(lcd,False)
-lcdHome(lcd)
-lcdClear(lcd)
-lcdPosition(lcd, 0, 0)
-#lcdPuts(lcd, datetime.now().strftime("%I:%M:%S %p"))
-#lcdPosition(lcd, 0, 1)
-#lcdPuts(lcd, datetime.now().strftime("%A, %B %e, %Y"))
-
-while True:
-    d = datetime.now().strftime("%A, %B %e, %Y")
-    t = datetime.now().strftime("%I:%M:%S %p")
-    scrolling_message(d + " " + t)
-
-lcdPosition(lcd, 0, 0)
-
-
+    def autoscroll(self,text):
+        try:
+            pass
+        except:
+            pass
 
